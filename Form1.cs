@@ -22,9 +22,11 @@ namespace SayariDemonstration
         #region variables
         private static readonly string baseUrl = "https://api.sayari.com"; // Sayari's API base URL
         private static readonly string authEndpoint = "/oauth/token"; // actual authentication endpoint
+        private static readonly string searchEndpoint = "/v1/search/entity"; // actual search endpoint
         private static readonly string clientId = "f87uCTW8o2sGdFwJElI4KC14XGD5OmNG";
-        private static readonly string clientSecret = "";
+        private static readonly string clientSecret = 
         public List<CsvRow> fileData = new List<CsvRow>();
+        internal AuthResponse authenticationInfo = new AuthResponse();
 
         public class AuthResponse
         {
@@ -45,14 +47,14 @@ namespace SayariDemonstration
         public class CsvRow
         {
             public string Name { get; set; }
-            public string Address { get; set; } 
+            public string Address { get; set; }
             public string Country { get; set; }
         }
 
-        
+
         #endregion
 
-        
+
 
         public Form1()
         {
@@ -108,11 +110,6 @@ namespace SayariDemonstration
             }
         }
 
-        private void btn_exeAPI_Click(object sender, EventArgs e)
-        {
-            //WebUtility.UrlEncode(originalString)
-        }
-
         private void btn_authenticate_Click(object sender, EventArgs e)
         {
             using (HttpClient client = new HttpClient())
@@ -136,32 +133,71 @@ namespace SayariDemonstration
                 request.Content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
 
                 // Send the request synchronously
-                HttpResponseMessage response = client.PostAsync(authEndpoint, request.Content).Result;
-
-                if (response.IsSuccessStatusCode)
+                using (HttpResponseMessage response = client.PostAsync(authEndpoint, request.Content).Result)
                 {
-                    string responseBody = response.Content.ReadAsStringAsync().Result;
 
-                    // Deserialize the JSON response to extract access_token
-                    AuthResponse jsonResponse = JsonSerializer.Deserialize<AuthResponse>(responseBody);
-                    if (jsonResponse != null && !string.IsNullOrEmpty(jsonResponse.AccessToken))
+                    if (response.IsSuccessStatusCode)
                     {
-                        Console.WriteLine("Authentication successful.");
-                        //return jsonResponse.AccessToken;
-                        isAuthenticated_lbl.Text = "TRUE";
-                        isAuthenticated_lbl.ForeColor = Color.DarkGreen;
+                        string responseBody = response.Content.ReadAsStringAsync().Result;
+
+                        // Deserialize the JSON response to extract access_token
+                        authenticationInfo = JsonSerializer.Deserialize<AuthResponse>(responseBody);
+                        if (authenticationInfo != null && !string.IsNullOrEmpty(authenticationInfo.AccessToken))
+                        {
+                            Console.WriteLine("Authentication successful.");
+                            //return jsonResponse.AccessToken;
+                            isAuthenticated_lbl.Text = "TRUE";
+                            isAuthenticated_lbl.ForeColor = Color.DarkGreen;
+                        }
+                        else
+                        {
+                            throw new Exception("Access token not found in the response.");
+                        }
                     }
                     else
                     {
-                        throw new Exception("Access token not found in the response.");
+                        Console.WriteLine($"Authentication failed: {response.StatusCode}");
+                        string errorBody = response.Content.ReadAsStringAsync().Result;
+                        Console.WriteLine(errorBody);
+                        throw new Exception("Failed to authenticate.");
                     }
                 }
-                else
+            }
+        }
+
+        private void btn_exeAPI_Click(object sender, EventArgs e)
+        {
+            using (var client = new HttpClient())
+            {
+                // Add the Authorization header with the Bearer token
+                client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", authenticationInfo.AccessToken);
+
+                // Use a using statement for HttpRequestMessage to ensure proper disposal
+                using (var request = new HttpRequestMessage(HttpMethod.Post, "https://api.sayari.com/v1/search/entity?limit=1"))
                 {
-                    Console.WriteLine($"Authentication failed: {response.StatusCode}");
-                    string errorBody = response.Content.ReadAsStringAsync().Result;
-                    Console.WriteLine(errorBody);
-                    throw new Exception("Failed to authenticate.");
+                    var content = new StringContent(
+                        "{\n    \"q\": \"(name.value:Hangzhou Hikvision Digital Technology Co. Ltd.~5^2 OR value.address: Bejing)\",\n    \"filter\" : {\n        \"entity_type\": [\"company\"],\n        \"county\": [\"CHN\"]\n    },\n    \"advanced\": true\n}",
+                        Encoding.UTF8,
+                        "application/json"
+                    );
+                    request.Content = content;
+
+                    try
+                    {
+                        // Make an asynchronous HTTP request and block to wait for the result
+                        using (var response = client.SendAsync(request).GetAwaiter().GetResult())
+                        {
+                            response.EnsureSuccessStatusCode();
+
+                            // Read the response content synchronously
+                            var responseBody = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+                            Console.WriteLine(responseBody);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"An error occurred: {ex.Message}");
+                    }
                 }
             }
         }
