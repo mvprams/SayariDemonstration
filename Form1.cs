@@ -11,17 +11,35 @@ using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+
 
 namespace SayariDemonstration
 {
     public partial class Form1 : Form
     {
         #region variables
-        private static string bearToken = string.Empty;
-        private static readonly string baseUrl = "https://api.sayari.com"; // Replace with Sayari's API base URL
-        private static readonly string authEndpoint = "/v1/auth/token"; // Replace with the actual authentication endpoint
-        private static readonly string apiKey = "YOUR_API_KEY"; // Replace with your actual API key
+        private static readonly string baseUrl = "https://api.sayari.com"; // Sayari's API base URL
+        private static readonly string authEndpoint = "/oauth/token"; // actual authentication endpoint
+        private static readonly string clientId = "f87uCTW8o2sGdFwJElI4KC14XGD5OmNG";
+        private static readonly string clientSecret = "";
         public List<CsvRow> fileData = new List<CsvRow>();
+
+        public class AuthResponse
+        {
+            [JsonPropertyName("access_token")]
+            public string AccessToken { get; set; }
+
+            [JsonPropertyName("token_type")]
+            public string TokenType { get; set; }
+
+            [JsonPropertyName("expires_in")]
+            public int ExpiresIn { get; set; }
+
+            [JsonPropertyName("scope")]
+            public string Scope { get; set; }
+        }
 
 
         public class CsvRow
@@ -105,28 +123,43 @@ namespace SayariDemonstration
                 HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, authEndpoint);
                 request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
-                // Add API key or other credentials
+                // Add client credentials to the body
                 var credentials = new
                 {
-                    apiKey = apiKey // Adjust based on Sayari's API requirements
+                    client_id = clientId,
+                    client_secret = clientSecret,
+                    audience = "sayari.com",
+                    grant_type = "client_credentials"
                 };
 
-                string jsonBody = System.Text.Json.JsonSerializer.Serialize(credentials);
+                string jsonBody = JsonSerializer.Serialize(credentials);
                 request.Content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
 
-                // Send the request
-                HttpResponseMessage response = await client.SendAsync(request);
+                // Send the request synchronously
+                HttpResponseMessage response = client.PostAsync(authEndpoint, request.Content).Result;
 
                 if (response.IsSuccessStatusCode)
                 {
-                    string responseBody = await response.Content.ReadAsStringAsync();
-                    Console.WriteLine("Authentication successful.");
-                    return responseBody; // Typically includes the token
+                    string responseBody = response.Content.ReadAsStringAsync().Result;
+
+                    // Deserialize the JSON response to extract access_token
+                    AuthResponse jsonResponse = JsonSerializer.Deserialize<AuthResponse>(responseBody);
+                    if (jsonResponse != null && !string.IsNullOrEmpty(jsonResponse.AccessToken))
+                    {
+                        Console.WriteLine("Authentication successful.");
+                        //return jsonResponse.AccessToken;
+                        isAuthenticated_lbl.Text = "TRUE";
+                        isAuthenticated_lbl.ForeColor = Color.DarkGreen;
+                    }
+                    else
+                    {
+                        throw new Exception("Access token not found in the response.");
+                    }
                 }
                 else
                 {
                     Console.WriteLine($"Authentication failed: {response.StatusCode}");
-                    string errorBody = await response.Content.ReadAsStringAsync();
+                    string errorBody = response.Content.ReadAsStringAsync().Result;
                     Console.WriteLine(errorBody);
                     throw new Exception("Failed to authenticate.");
                 }
