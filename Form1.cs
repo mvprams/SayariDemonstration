@@ -24,9 +24,10 @@ namespace SayariDemonstration
         private static readonly string authEndpoint = "/oauth/token"; // actual authentication endpoint
         private static readonly string searchEndpoint = "/v1/search/entity"; // actual search endpoint
         private static readonly string clientId = "f87uCTW8o2sGdFwJElI4KC14XGD5OmNG";
-        private static readonly string clientSecret = 
-        public List<CsvRow> fileData = new List<CsvRow>();
+        private static readonly string clientSecret = "GranHORC-tOOLigU28oP_PyMTesCKKSmu29zvQXTB5PR_z_rVZHIv1CeEBBwvBZM";
+        internal List<CsvRow> fileData = new List<CsvRow>();
         internal AuthResponse authenticationInfo = new AuthResponse();
+        internal List<CompanyInfo> companyInfo = new List<CompanyInfo>();
 
         public class AuthResponse
         {
@@ -41,6 +42,33 @@ namespace SayariDemonstration
 
             [JsonPropertyName("scope")]
             public string Scope { get; set; }
+        }
+
+        public class CompanyInfo
+        {
+            [JsonPropertyName("id")]
+            public string Id { get; set; }
+
+            [JsonPropertyName("pep")]
+            public bool Pep { get; set; }
+
+            [JsonPropertyName("sanctioned")]
+            public bool Sanctioned { get; set; }
+
+            [JsonPropertyName("label")]
+            public string Label { get; set; }
+
+            [JsonPropertyName("translated_label")]
+            public string TranslatedLabel { get; set; }
+
+            [JsonPropertyName("company_type")]
+            public string CompanyType { get; set; }
+
+            [JsonPropertyName("registration_date")]
+            public string RegistrationDate { get; set; }
+
+            [JsonPropertyName("type")]
+            public string Type { get; set; }
         }
 
 
@@ -169,36 +197,75 @@ namespace SayariDemonstration
         {
             using (var client = new HttpClient())
             {
-                // Add the Authorization header with the Bearer token
-                client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", authenticationInfo.AccessToken);
+                // Set the Authorization header
+                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", authenticationInfo.AccessToken);
 
-                // Use a using statement for HttpRequestMessage to ensure proper disposal
-                using (var request = new HttpRequestMessage(HttpMethod.Post, "https://api.sayari.com/v1/search/entity?limit=1"))
+                foreach (var company in fileData)
                 {
-                    var content = new StringContent(
-                        "{\n    \"q\": \"(name.value:Hangzhou Hikvision Digital Technology Co. Ltd.~5^2 OR value.address: Bejing)\",\n    \"filter\" : {\n        \"entity_type\": [\"company\"],\n        \"county\": [\"CHN\"]\n    },\n    \"advanced\": true\n}",
-                        Encoding.UTF8,
-                        "application/json"
-                    );
-                    request.Content = content;
+                    var query = $"(name.value:{company.Name}~5^2 OR value.address:{company.Address})";
 
-                    try
+                    // Build the request payload
+                    var payload = new
                     {
-                        // Make an asynchronous HTTP request and block to wait for the result
-                        using (var response = client.SendAsync(request).GetAwaiter().GetResult())
+                        q = query,
+                        filter = new
                         {
-                            response.EnsureSuccessStatusCode();
+                            entity_type = new[] { "company" },
+                            county = new[] { company.Country }
+                        },
+                        advanced = true
+                    };
 
-                            // Read the response content synchronously
-                            var responseBody = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
-                            Console.WriteLine(responseBody);
+                    var jsonPayload = JsonSerializer.Serialize(payload);
+
+                    using (var request = new HttpRequestMessage(HttpMethod.Post, "https://api.sayari.com/v1/search/entity?limit=1"))
+                    {
+                        request.Content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+
+                        try
+                        {
+                            // Perform the synchronous HTTP request
+                            using (var response = client.SendAsync(request).GetAwaiter().GetResult())
+                            {
+                                response.EnsureSuccessStatusCode();
+                                var responseBody = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+
+                                // Deserialize response
+                                var responseObject = JsonSerializer.Deserialize<Dictionary<string, object>>(responseBody);
+
+                                /////////////////////THIS IS WHERE THE WORK IS /////////////////////
+                                ///
+                                // Deserialize the 'data' object which is an array, and get the first element
+                                CompanyInfo company1 = new CompanyInfo();
+                                
+
+                                var jsonDoc = JsonDocument.Parse(responseBody);
+                                var companyData = jsonDoc.RootElement
+                                    .GetProperty("data")[0];
+
+                                company1 = JsonSerializer.Deserialize<CompanyInfo>(companyData);
+
+                                // Assuming the "data" is an array with one object
+
+                                ///////////////////////////////
+
+                                Console.WriteLine($"Response for {company.Name}:");
+                                Console.WriteLine(JsonSerializer.Serialize(responseObject, new JsonSerializerOptions { WriteIndented = true }));
+
+                                // Optionally save response to a file
+                                var fileName = $"{company.Name.Replace(" ", "_")}_response.json";
+                                System.IO.File.WriteAllText(fileName, JsonSerializer.Serialize(responseObject, new JsonSerializerOptions { WriteIndented = true }));
+
+                                companyInfo.Add(company1);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"An error occurred for {company.Name}: {ex.Message}");
                         }
                     }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"An error occurred: {ex.Message}");
-                    }
                 }
+                Console.WriteLine($"Completed: {companyInfo.Count()}");
             }
         }
     }
