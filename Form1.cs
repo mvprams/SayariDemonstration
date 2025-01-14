@@ -132,7 +132,6 @@ namespace SayariDemonstration
             public string Country { get; set; }
         }
 
-
         #endregion
 
 
@@ -349,69 +348,76 @@ namespace SayariDemonstration
             //tb_chatGPToutput.Text = recommendation;
         }
 
+        private void btn_closestToSayariHQ_Click(object sender, EventArgs e)
+        {
+            ChatGPTResponse response = CompanyClosestToSayariHQ(fileData);
+            tb_chatGPToutput.Text = $"Role: {response.Choices[0].Message.Role} \nContent:{response.Choices[0].Message.Content}";
+            
+        }
+
 
 
 
         #region "helper functions"
-            /*
-            public static string GetRiskMitigationRecommendations(List<CompanyInfo> companyInfoList)
+        /*
+        public static string GetRiskMitigationRecommendations(List<CompanyInfo> companyInfoList)
+        {
+            var requestBody = new
             {
-                var requestBody = new
+                model = "gpt-3.5-turbo",
+                messages = new[]
                 {
-                    model = "gpt-3.5-turbo",
-                    messages = new[]
-                    {
-                    new { role = "system", content = "You are a procurement expert specializing in supply chain risk management." },
-                    new { role = "user", content = "Please provide actionable recommendations to mitigate risks and improve compliance. The companies are Huawei & Hefei Meiling." }
-                },
-                    max_tokens = 100,
-                    temperature = 0.7
-                };
+                new { role = "system", content = "You are a procurement expert specializing in supply chain risk management." },
+                new { role = "user", content = "Please provide actionable recommendations to mitigate risks and improve compliance. The companies are Huawei & Hefei Meiling." }
+            },
+                max_tokens = 100,
+                temperature = 0.7
+            };
 
-                try
+            try
+            {
+                string jsonResponse = SendRequest(OpenAIAuthenticationKey, OpenAIEndpoint, requestBody);
+                ChatGPTResponse response = JsonSerializer.Deserialize<ChatGPTResponse>(jsonResponse);
+
+                Console.WriteLine($"Response ID: {response.Id}");
+                Console.WriteLine($"Response Model: {response.Model}");
+                Console.WriteLine("Choices:");
+                foreach (var choice in response.Choices)
                 {
-                    string jsonResponse = SendRequest(OpenAIAuthenticationKey, OpenAIEndpoint, requestBody);
-                    ChatGPTResponse response = JsonSerializer.Deserialize<ChatGPTResponse>(jsonResponse);
-
-                    Console.WriteLine($"Response ID: {response.Id}");
-                    Console.WriteLine($"Response Model: {response.Model}");
-                    Console.WriteLine("Choices:");
-                    foreach (var choice in response.Choices)
-                    {
-                        Console.WriteLine($"  Text: {choice.Text}");
-                    }
-                    return "woot";
+                    Console.WriteLine($"  Text: {choice.Text}");
                 }
-                catch (Exception ex)
+                return "woot";
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error: {ex.Message}");
+                return "fail";
+            }
+        }
+
+        private static string SendRequest(string apiKey, string endpoint, object requestBody)
+        {
+            using (HttpClient client = new HttpClient())
+            {
+                // Create the request
+                var request = new HttpRequestMessage(HttpMethod.Post, endpoint);
+
+                // Add headers
+                request.Headers.Add("Authorization", $"Bearer {apiKey}");
+                var content = new StringContent("{\n \"model\": \"gpt-3.5-turbo\",\n \"messages\": [{\"role\":\"system\",\"content\":\"Please provide actionable recommendations to mitigate risks and improve compliance. The companies are Huweii & Heifei Meiling\"}] \n}", null, "application/json");
+
+                // Send the request and get the response
+                using (HttpResponseMessage response = client.SendAsync(request).Result)
                 {
-                    Console.WriteLine($"Error: {ex.Message}");
-                    return "fail";
+                    // Ensure the response is successful
+                    response.EnsureSuccessStatusCode();
+
+                    // Read and return the response content
+                    return response.Content.ReadAsStringAsync().Result;
                 }
             }
-
-            private static string SendRequest(string apiKey, string endpoint, object requestBody)
-            {
-                using (HttpClient client = new HttpClient())
-                {
-                    // Create the request
-                    var request = new HttpRequestMessage(HttpMethod.Post, endpoint);
-
-                    // Add headers
-                    request.Headers.Add("Authorization", $"Bearer {apiKey}");
-                    var content = new StringContent("{\n \"model\": \"gpt-3.5-turbo\",\n \"messages\": [{\"role\":\"system\",\"content\":\"Please provide actionable recommendations to mitigate risks and improve compliance. The companies are Huweii & Heifei Meiling\"}] \n}", null, "application/json");
-
-                    // Send the request and get the response
-                    using (HttpResponseMessage response = client.SendAsync(request).Result)
-                    {
-                        // Ensure the response is successful
-                        response.EnsureSuccessStatusCode();
-
-                        // Read and return the response content
-                        return response.Content.ReadAsStringAsync().Result;
-                    }
-                }
-            }
-            */
+        }
+        */
 
 
 
@@ -433,7 +439,6 @@ namespace SayariDemonstration
             }
 
             textBox1.Text = "Please provide actionable recommendations for the specified companies mitigate risks and improve compliance.The companies are" + $"{buildText}";
-            
 
 
             var client = new HttpClient();
@@ -458,11 +463,50 @@ namespace SayariDemonstration
             Console.WriteLine(readTask.Result);
             return output;
         }
+
         #endregion
 
-        private void button1_Click(object sender, EventArgs e)
-        {
 
+        public ChatGPTResponse CompanyClosestToSayariHQ(List<CsvRow> rawFileData)
+        {
+            string buildText = string.Empty;
+            int count = 0;
+            foreach (CsvRow c in rawFileData)
+            {
+                if (count == 0)
+                {
+                    buildText += $"Company: {c.Name}, Address:{c.Address}, Country:{c.Country} ||";
+                }
+                else
+                {
+                    buildText += $"Company:{c.Name}, Address:{c.Address}, Country:{c.Country} ||";
+                }
+            }
+
+            textBox1.Text = $"I have a list of {rawFileData.Count()} and would like to find which company is located the closest to Sayari's HQ. The list of companies are {buildText}";
+
+
+            var client = new HttpClient();
+            var request = new HttpRequestMessage(HttpMethod.Post, "https://api.openai.com/v1/chat/completions");
+
+            request.Headers.Add("Authorization", "Bearer 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");
+            request.Headers.Add("Cookie", "__cf_bm=if7WKkYqKIIeRYSIoTfsF3JbqEddpGPLlKDxfy9HjAM-1736745779-1.0.1.1-j.g6EE_Sws8SW.sMF6xfQ2Z4YYZ.CMhEudl3re3Y7HgmNLkt.0sg6wPP6rpp3e8aGc7JjMGR78liAr5tEna3yA; _cfuvid=f1vePZPkUyIlrlmDgBkWUt0IYnDWAL_2URIZeGW5A9k-1736744834616-0.0.1.1-604800000");
+            var content = new StringContent("{\n \"model\": \"gpt-3.5-turbo\",\n \"messages\": [{\"role\":\"system\",\"content\":\"I have a list of " + $"{rawFileData.Count()} and would like to find which company is located the closest to Sayari's HQ @ 829 7th St NW Floor 3, Washington, DC 20001. The list of companies are {buildText}" + "\"}] \n}", null, "application/json");
+            request.Content = content;
+
+
+            var task = client.SendAsync(request);
+            task.Wait();
+
+            var response = task.Result;
+            response.EnsureSuccessStatusCode();
+            var readTask = response.Content.ReadAsStringAsync();
+            readTask.Wait();
+            var jsonResponse = response.Content.ReadAsStringAsync().Result;
+            ChatGPTResponse output = JsonSerializer.Deserialize<ChatGPTResponse>(jsonResponse);
+
+            Console.WriteLine(readTask.Result);
+            return output;
         }
     }
 }

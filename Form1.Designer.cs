@@ -41,12 +41,12 @@
             this.btn_authenticate = new System.Windows.Forms.Button();
             this.btn_exeAPI = new System.Windows.Forms.Button();
             this.tabPage3 = new System.Windows.Forms.TabPage();
+            this.btn_closestToSayariHQ = new System.Windows.Forms.Button();
+            this.textBox1 = new System.Windows.Forms.TextBox();
+            this.label4 = new System.Windows.Forms.Label();
+            this.label3 = new System.Windows.Forms.Label();
             this.tb_chatGPToutput = new System.Windows.Forms.RichTextBox();
             this.btn_ChatGPT_actionplan = new System.Windows.Forms.Button();
-            this.label3 = new System.Windows.Forms.Label();
-            this.label4 = new System.Windows.Forms.Label();
-            this.textBox1 = new System.Windows.Forms.TextBox();
-            this.btn_closestToSayariHQ = new System.Windows.Forms.Button();
             this.tabControl1.SuspendLayout();
             this.tabPage1.SuspendLayout();
             this.tabPage2.SuspendLayout();
@@ -200,6 +200,42 @@
             this.tabPage3.Text = "Do Something Awesome";
             this.tabPage3.UseVisualStyleBackColor = true;
             // 
+            // btn_closestToSayariHQ
+            // 
+            this.btn_closestToSayariHQ.Location = new System.Drawing.Point(28, 16);
+            this.btn_closestToSayariHQ.Name = "btn_closestToSayariHQ";
+            this.btn_closestToSayariHQ.Size = new System.Drawing.Size(136, 55);
+            this.btn_closestToSayariHQ.TabIndex = 5;
+            this.btn_closestToSayariHQ.Text = "Closest to Sayari HQ";
+            this.btn_closestToSayariHQ.UseVisualStyleBackColor = true;
+            this.btn_closestToSayariHQ.Click += new System.EventHandler(this.btn_closestToSayariHQ_Click);
+            // 
+            // textBox1
+            // 
+            this.textBox1.Location = new System.Drawing.Point(239, 26);
+            this.textBox1.Multiline = true;
+            this.textBox1.Name = "textBox1";
+            this.textBox1.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
+            this.textBox1.Size = new System.Drawing.Size(936, 117);
+            this.textBox1.TabIndex = 4;
+            // 
+            // label4
+            // 
+            this.label4.AutoSize = true;
+            this.label4.Location = new System.Drawing.Point(171, 42);
+            this.label4.Name = "label4";
+            this.label4.Size = new System.Drawing.Size(46, 20);
+            this.label4.TabIndex = 3;
+            this.label4.Text = "Input";
+            // 
+            // label3
+            // 
+            this.label3.AutoSize = true;
+            this.label3.Location = new System.Drawing.Point(442, 71);
+            this.label3.Name = "label3";
+            this.label3.Size = new System.Drawing.Size(0, 20);
+            this.label3.TabIndex = 2;
+            // 
             // tb_chatGPToutput
             // 
             this.tb_chatGPToutput.Location = new System.Drawing.Point(28, 157);
@@ -214,45 +250,9 @@
             this.btn_ChatGPT_actionplan.Name = "btn_ChatGPT_actionplan";
             this.btn_ChatGPT_actionplan.Size = new System.Drawing.Size(179, 65);
             this.btn_ChatGPT_actionplan.TabIndex = 0;
-            this.btn_ChatGPT_actionplan.Text = "ChatGpt Mitigation Plan";
+            this.btn_ChatGPT_actionplan.Text = "Create Mitigation Plan";
             this.btn_ChatGPT_actionplan.UseVisualStyleBackColor = true;
             this.btn_ChatGPT_actionplan.Click += new System.EventHandler(this.btn_ChatGPT_actionplan_Click);
-            // 
-            // label3
-            // 
-            this.label3.AutoSize = true;
-            this.label3.Location = new System.Drawing.Point(442, 71);
-            this.label3.Name = "label3";
-            this.label3.Size = new System.Drawing.Size(0, 20);
-            this.label3.TabIndex = 2;
-            // 
-            // label4
-            // 
-            this.label4.AutoSize = true;
-            this.label4.Location = new System.Drawing.Point(171, 42);
-            this.label4.Name = "label4";
-            this.label4.Size = new System.Drawing.Size(46, 20);
-            this.label4.TabIndex = 3;
-            this.label4.Text = "Input";
-            // 
-            // textBox1
-            // 
-            this.textBox1.Location = new System.Drawing.Point(239, 26);
-            this.textBox1.Multiline = true;
-            this.textBox1.Name = "textBox1";
-            this.textBox1.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
-            this.textBox1.Size = new System.Drawing.Size(936, 117);
-            this.textBox1.TabIndex = 4;
-            // 
-            // btn_closestToSayariHQ
-            // 
-            this.btn_closestToSayariHQ.Location = new System.Drawing.Point(28, 16);
-            this.btn_closestToSayariHQ.Name = "btn_closestToSayariHQ";
-            this.btn_closestToSayariHQ.Size = new System.Drawing.Size(136, 55);
-            this.btn_closestToSayariHQ.TabIndex = 5;
-            this.btn_closestToSayariHQ.Text = "Closest to Sayari HQ";
-            this.btn_closestToSayariHQ.UseVisualStyleBackColor = true;
-            this.btn_closestToSayariHQ.Click += new System.EventHandler(this.button1_Click);
             // 
             // Form1
             // 
