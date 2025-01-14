@@ -13,6 +13,9 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement;
+using System.Security.Cryptography;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.TrackBar;
 
 
 namespace SayariDemonstration
@@ -28,6 +31,56 @@ namespace SayariDemonstration
         internal List<CsvRow> fileData = new List<CsvRow>();
         internal AuthResponse authenticationInfo = new AuthResponse();
         internal List<CompanyInfo> companyInfo = new List<CompanyInfo>();
+        private const string OpenAIEndpoint = "https://api.openai.com/v1/completions";
+        private const string OpenAIModel = "gpt-3.5-turbo"; // Specify the model you want to use
+        private const string OpenAIAuthenticationKey = "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";
+
+
+        #region "chatgpt objects"
+        public class ChatGPTResponse
+        {
+            [JsonPropertyName("id")]
+            public string Id { get; set; }
+            [JsonPropertyName("object")]
+            public string Object { get; set; }
+            [JsonPropertyName("created")]
+            public int Created { get; set; }
+            [JsonPropertyName("model")]
+            public string Model { get; set; }
+            [JsonPropertyName("choices")]
+            public List<Choice> Choices { get; set; }
+            [JsonPropertyName("usage")]
+            public Usage Usage { get; set; }
+        }
+
+        public class Choice
+        {
+            [JsonPropertyName("message")]
+            public Message Message { get; set; }
+            [JsonPropertyName("finish_reason")]
+            public string FinishReason { get; set; }
+        }
+
+        public class Message
+        {
+            [JsonPropertyName("role")]
+            public string Role { get; set; }
+            [JsonPropertyName("content")]
+            public string Content { get; set; }
+        }
+
+        public class Usage
+        {
+            [JsonPropertyName("prompt_tokens")]
+            public int PromptTokens { get; set; }
+            [JsonPropertyName("completion_tokens")]
+            public int CompletionTokens { get; set; }
+            [JsonPropertyName("total_tokens")]
+            public int TotalTokens { get; set; }
+        }
+
+        #endregion
+
 
         public class AuthResponse
         {
@@ -136,6 +189,14 @@ namespace SayariDemonstration
                     Console.WriteLine($"Name: {row.Name}, Address: {row.Address}, Country: {row.Country}");
                 }
             }
+            lbl_fileCountofRecords.Text = $"Number of records imported: {fileData.Count()}";
+
+            /// adding items to listview
+            /// 
+            foreach (var item in fileData)
+            {
+                listBox1.Items.Add($"{item.Name}\t\t{item.Address}\t\t{item.Country}");
+            }
         }
 
         private void btn_authenticate_Click(object sender, EventArgs e)
@@ -237,7 +298,7 @@ namespace SayariDemonstration
                                 ///
                                 // Deserialize the 'data' object which is an array, and get the first element
                                 CompanyInfo company1 = new CompanyInfo();
-                                
+
 
                                 var jsonDoc = JsonDocument.Parse(responseBody);
                                 var companyData = jsonDoc.RootElement
@@ -266,7 +327,142 @@ namespace SayariDemonstration
                     }
                 }
                 Console.WriteLine($"Completed: {companyInfo.Count()}");
+
+                label2.Text = $"Total Number of companies matched: {companyInfo.Count()}";
+
+                foreach (var item in companyInfo)
+                {
+                    listBox2.Items.Add($"{item.Label}\t\t{item.Id}\t\t{item.TranslatedLabel}\t\t{item.Sanctioned}\t\t{item.Pep}\t\t{item.CompanyType}");
+                }
             }
+        }
+
+        private void btn_ChatGPT_actionplan_Click(object sender, EventArgs e)
+        {
+
+            // Check for sanctions using ChatGPT
+            ChatGPTResponse response = entirelyDifferentDeal(companyInfo.Where(c => !c.Sanctioned).ToList());
+            tb_chatGPToutput.Text = $"Role: {response.Choices[0].Message.Role} \nContent:{response.Choices[0].Message.Content}";
+
+            //string recommendation = GetRiskMitigationRecommendations(companyInfo.Where(c => !c.Sanctioned).ToList());
+
+            //tb_chatGPToutput.Text = recommendation;
+        }
+
+
+
+
+        #region "helper functions"
+            /*
+            public static string GetRiskMitigationRecommendations(List<CompanyInfo> companyInfoList)
+            {
+                var requestBody = new
+                {
+                    model = "gpt-3.5-turbo",
+                    messages = new[]
+                    {
+                    new { role = "system", content = "You are a procurement expert specializing in supply chain risk management." },
+                    new { role = "user", content = "Please provide actionable recommendations to mitigate risks and improve compliance. The companies are Huawei & Hefei Meiling." }
+                },
+                    max_tokens = 100,
+                    temperature = 0.7
+                };
+
+                try
+                {
+                    string jsonResponse = SendRequest(OpenAIAuthenticationKey, OpenAIEndpoint, requestBody);
+                    ChatGPTResponse response = JsonSerializer.Deserialize<ChatGPTResponse>(jsonResponse);
+
+                    Console.WriteLine($"Response ID: {response.Id}");
+                    Console.WriteLine($"Response Model: {response.Model}");
+                    Console.WriteLine("Choices:");
+                    foreach (var choice in response.Choices)
+                    {
+                        Console.WriteLine($"  Text: {choice.Text}");
+                    }
+                    return "woot";
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error: {ex.Message}");
+                    return "fail";
+                }
+            }
+
+            private static string SendRequest(string apiKey, string endpoint, object requestBody)
+            {
+                using (HttpClient client = new HttpClient())
+                {
+                    // Create the request
+                    var request = new HttpRequestMessage(HttpMethod.Post, endpoint);
+
+                    // Add headers
+                    request.Headers.Add("Authorization", $"Bearer {apiKey}");
+                    var content = new StringContent("{\n \"model\": \"gpt-3.5-turbo\",\n \"messages\": [{\"role\":\"system\",\"content\":\"Please provide actionable recommendations to mitigate risks and improve compliance. The companies are Huweii & Heifei Meiling\"}] \n}", null, "application/json");
+
+                    // Send the request and get the response
+                    using (HttpResponseMessage response = client.SendAsync(request).Result)
+                    {
+                        // Ensure the response is successful
+                        response.EnsureSuccessStatusCode();
+
+                        // Read and return the response content
+                        return response.Content.ReadAsStringAsync().Result;
+                    }
+                }
+            }
+            */
+
+
+
+
+        public ChatGPTResponse entirelyDifferentDeal(List<CompanyInfo> companyInformList)
+        {
+            string buildText = string.Empty ;
+            int count = 0;
+            foreach(CompanyInfo c in companyInformList)
+            {
+                if (count == 0)
+                {
+                    buildText += $"{c.Label}";
+                }
+                else
+                {
+                    buildText += $", {c.Label}";
+                }
+            }
+
+            textBox1.Text = "Please provide actionable recommendations for the specified companies mitigate risks and improve compliance.The companies are" + $"{buildText}";
+            
+
+
+            var client = new HttpClient();
+            var request = new HttpRequestMessage(HttpMethod.Post, "https://api.openai.com/v1/chat/completions");
+            
+            request.Headers.Add("Authorization", "Bearer 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");
+            request.Headers.Add("Cookie", "__cf_bm=if7WKkYqKIIeRYSIoTfsF3JbqEddpGPLlKDxfy9HjAM-1736745779-1.0.1.1-j.g6EE_Sws8SW.sMF6xfQ2Z4YYZ.CMhEudl3re3Y7HgmNLkt.0sg6wPP6rpp3e8aGc7JjMGR78liAr5tEna3yA; _cfuvid=f1vePZPkUyIlrlmDgBkWUt0IYnDWAL_2URIZeGW5A9k-1736744834616-0.0.1.1-604800000");
+            var content = new StringContent("{\n \"model\": \"gpt-3.5-turbo\",\n \"messages\": [{\"role\":\"system\",\"content\":\"Please provide actionable recommendations for the specified companies mitigate risks and improve compliance. The companies are"+$" {buildText}"+"\"}] \n}", null, "application/json");
+            request.Content = content;
+
+
+            var task = client.SendAsync(request);
+            task.Wait();
+
+            var response = task.Result;
+            response.EnsureSuccessStatusCode();
+            var readTask = response.Content.ReadAsStringAsync();
+            readTask.Wait();
+            var jsonResponse = response.Content.ReadAsStringAsync().Result;
+            ChatGPTResponse output = JsonSerializer.Deserialize<ChatGPTResponse>(jsonResponse);
+
+            Console.WriteLine(readTask.Result);
+            return output;
+        }
+        #endregion
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+
         }
     }
 }
